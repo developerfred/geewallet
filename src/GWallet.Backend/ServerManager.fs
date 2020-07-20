@@ -67,21 +67,26 @@ module ServerManager =
             | Currency.BTC ->
                 Infrastructure.LogInfo
                     (SPrintF1 "%i BTC servers from electrum repository" (electrumBtcServers.Count ()))
+
                 Infrastructure.LogInfo (SPrintF1 "%i BTC servers from bitcoin-eye" (eyeBtcServers.Count ()))
             | Currency.LTC ->
                 Infrastructure.LogInfo
                     (SPrintF1 "%i LTC servers from electrum repository" (electrumLtcServers.Count ()))
+
                 Infrastructure.LogInfo (SPrintF1 "%i LTC servers from bitcoin-eye" (eyeLtcServers.Count ()))
             | _ -> ()
 
         let allCurrenciesServers =
-            baseLineServers.Add(Currency.BTC, allBtcServers).Add(Currency.LTC, allLtcServers)
+            baseLineServers
+                .Add(Currency.BTC, allBtcServers)
+                .Add(Currency.LTC, allLtcServers)
 
         let allServersJson = ServerRegistry.Serialize allCurrenciesServers
         File.WriteAllText (ServerRegistry.ServersEmbeddedResourceFileName, allServersJson)
 
         Infrastructure.LogInfo "OUTPUT:"
         let filteredOutServers = ServerRegistry.Deserialize allServersJson
+
         for KeyValue (currency, servers) in filteredOutServers do
             Infrastructure.LogInfo (SPrintF2 "%i %A servers total" (servers.Count ()) currency)
 
@@ -165,6 +170,7 @@ module ServerManager =
                     // because ETH tokens use ETH servers
                     if not (currency.IsEthToken ()) then
                         let serversForSpecificCurrency = Caching.Instance.GetServers currency
+
                         match GetDummyBalanceAction currency serversForSpecificCurrency with
                         | None -> ()
                         | Some job -> yield job

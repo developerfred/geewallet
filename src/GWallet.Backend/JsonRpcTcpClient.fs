@@ -54,9 +54,10 @@ type JsonRpcTcpClient (host: string, port: uint32) =
                         else
                             return ipAddress
                     | None ->
-                        return raise
-                               <| ServerCannotBeResolvedException
-                                   (SPrintF1 "DNS host entry lookup resulted in no records for %s" host)
+                        return
+                            raise
+                            <| ServerCannotBeResolvedException
+                                (SPrintF1 "DNS host entry lookup resulted in no records for %s" host)
                 | None -> return raise <| TimeoutException (SPrintF2 "Timed out connecting to %s:%i" host port)
             with
                 | :? TimeoutException -> return raise (ServerCannotBeResolvedException (exceptionMsg))

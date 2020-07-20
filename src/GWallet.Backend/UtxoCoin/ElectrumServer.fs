@@ -38,6 +38,7 @@ type ElectrumServer =
     member self.CheckCompatibility (): unit =
         if self.UnencryptedPort.IsNone then
             raise (TlsNotSupportedYetInGWalletException ("TLS not yet supported"))
+
         if self.Fqdn.EndsWith ".onion" then
             raise (TorNotSupportedYetInGWalletException ("Tor(onion) not yet supported"))
 
@@ -62,9 +63,10 @@ module ElectrumServerSeedList =
         let url = SPrintF1 "https://1209k.com/bitcoin-eye/ele.php?chain=%s" currencyMnemonic
         let web = HtmlWeb ()
         let doc = web.Load url
-        let firstTable = (doc.DocumentNode.SelectNodes "//table").[0]
+        let firstTable = (doc.DocumentNode.SelectNodes"//table").[0]
         let tableBody = firstTable.SelectSingleNode "tbody"
         let servers = tableBody.SelectNodes "tr"
+
         seq {
             for i in 0 .. (servers.Count - 1) do
                 let server = servers.[i]
@@ -72,16 +74,19 @@ module ElectrumServerSeedList =
 
                 if serverProperties.Count = 0 then
                     failwith "Unexpected property count: 0"
+
                 let fqdn = serverProperties.[0].InnerText
 
                 if serverProperties.Count < 2 then
                     failwith
                     <| SPrintF2 "Unexpected property count in server %s: %i" fqdn serverProperties.Count
+
                 let port = UInt32.Parse serverProperties.[1].InnerText
 
                 if serverProperties.Count < 3 then
                     failwith
                     <| SPrintF3 "Unexpected property count in server %s:%i: %i" fqdn port serverProperties.Count
+
                 let portType = serverProperties.[2].InnerText
 
                 let encrypted =
@@ -102,11 +107,12 @@ module ElectrumServerSeedList =
                     else
                         Some port
 
-                yield {
-                          Fqdn = fqdn
-                          PrivatePort = privatePort
-                          UnencryptedPort = unencryptedPort
-                      }
+                yield
+                    {
+                        Fqdn = fqdn
+                        PrivatePort = privatePort
+                        UnencryptedPort = unencryptedPort
+                    }
         }
         |> Seq.filter FilterCompatibleServer
 
@@ -130,11 +136,12 @@ module ElectrumServerSeedList =
                         | None -> None
                         | Some portAsString -> Some (UInt32.Parse (portAsString.AsString ()))
 
-                    yield {
-                              Fqdn = key
-                              PrivatePort = encryptedPort
-                              UnencryptedPort = unencryptedPort
-                          }
+                    yield
+                        {
+                            Fqdn = key
+                            PrivatePort = encryptedPort
+                            UnencryptedPort = unencryptedPort
+                        }
             }
 
         servers |> List.ofSeq
@@ -151,6 +158,7 @@ module ElectrumServerSeedList =
 
         use webClient = new WebClient()
         let serverListInJson = webClient.DownloadString urlToElectrumJsonFile
+
         ExtractServerListFromElectrumJsonFile serverListInJson
         |> Seq.filter FilterCompatibleServer
 

@@ -1,5 +1,4 @@
-﻿// because of the use of obsolete NBitcoin.Crypto.Pbkdf2
-#nowarn "44"
+﻿#nowarn "44"
 
 namespace GWallet.Backend
 
@@ -17,8 +16,10 @@ module WarpKey =
             raise (ArgumentException ())
         else
             let result = Array.create<byte> a.Length (byte 0)
+
             for i = 0 to (a.Length - 1) do
                 result.[i] <- ((a.[i]) ^^^ (b.[i]))
+
             result
 
     let Scrypt (passphrase: string) (salt: string): array<byte> =
@@ -55,10 +56,12 @@ module WarpKey =
         let scrypt = Scrypt passphrase salt
         let pbkdf2 = PBKDF2 passphrase salt
         let privKeyBytes = XOR scrypt pbkdf2
+
         if (privKeyBytes.Length <> LENGTH_OF_PRIVATE_KEYS) then
             failwith
             <| SPrintF2
                 "Something went horribly wrong because length of privKey was not %i but %i"
-                   LENGTH_OF_PRIVATE_KEYS
-                   privKeyBytes.Length
+                LENGTH_OF_PRIVATE_KEYS
+                privKeyBytes.Length
+
         privKeyBytes

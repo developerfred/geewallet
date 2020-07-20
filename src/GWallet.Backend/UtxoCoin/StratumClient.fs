@@ -124,29 +124,34 @@ type StratumClient (jsonRpcClient: JsonRpcTcpClient) =
 
             // FIXME: we should actually fix this bug in JsonRpcSharp (https://github.com/nblockchain/JsonRpcSharp/issues/9)
             if String.IsNullOrEmpty rawResponse then
-                return raise
-                       <| ProtocolGlitchException
-                           (SPrintF2
-                               "Server '%s' returned a null/empty JSON response to the request '%s'??"
-                                jsonRpcClient.Host
-                                jsonRequest)
+                return
+                    raise
+                    <| ProtocolGlitchException
+                        (SPrintF2
+                            "Server '%s' returned a null/empty JSON response to the request '%s'??"
+                            jsonRpcClient.Host
+                            jsonRequest)
 
             try
                 return (StratumClient.Deserialize<'R> rawResponse, rawResponse)
             with :? ElectrumServerReturningErrorInJsonResponseException as ex ->
                 if ex.ErrorCode = int RpcErrorCode.InternalError then
-                    return raise
-                               (ElectrumServerReturningInternalErrorException
-                                   (ex.Message, ex.ErrorCode, jsonRequest, rawResponse))
+                    return
+                        raise
+                            (ElectrumServerReturningInternalErrorException
+                                (ex.Message, ex.ErrorCode, jsonRequest, rawResponse))
+
                 if ex.ErrorCode = int RpcErrorCode.UnknownMethod then
                     return raise <| ServerMisconfiguredException (ex.Message, ex)
+
                 if ex.ErrorCode = int RpcErrorCode.ServerBusy then
                     return raise <| ServerUnavailabilityException (ex.Message, ex)
+
                 if ex.ErrorCode = int RpcErrorCode.ExcessiveResourceUsage then
                     return raise <| ServerUnavailabilityException (ex.Message, ex)
 
-                return raise
-                           (ElectrumServerReturningErrorException (ex.Message, ex.ErrorCode, jsonRequest, rawResponse))
+                return
+                    raise (ElectrumServerReturningErrorException (ex.Message, ex.ErrorCode, jsonRequest, rawResponse))
         }
 
     static member public Deserialize<'T> (result: string): 'T =
@@ -161,8 +166,8 @@ type StratumClient (jsonRpcClient: JsonRpcTcpClient) =
                 <| Exception
                     (SPrintF2
                         "Failed deserializing JSON response (to check for error) '%s' to type '%s'"
-                         resultTrimmed
-                         typedefof<'T>.FullName,
+                        resultTrimmed
+                        typedefof<'T>.FullName,
                      ex)
 
         if (not (Object.ReferenceEquals (maybeError, null)))
@@ -179,16 +184,16 @@ type StratumClient (jsonRpcClient: JsonRpcTcpClient) =
                 <| Exception
                     (SPrintF2
                         "Failed deserializing JSON response '%s' to type '%s'"
-                         resultTrimmed
-                         typedefof<'T>.FullName,
+                        resultTrimmed
+                        typedefof<'T>.FullName,
                      ex)
 
         if Object.ReferenceEquals (deserializedValue, null) then
             failwith
             <| SPrintF2
                 "Failed deserializing JSON response '%s' to type '%s' (result was null)"
-                   resultTrimmed
-                   typedefof<'T>.FullName
+                resultTrimmed
+                typedefof<'T>.FullName
 
         deserializedValue
 
@@ -258,6 +263,7 @@ type StratumClient (jsonRpcClient: JsonRpcTcpClient) =
             }
 
         let json = Serialize obj
+
         async {
             let! resObj, _ = self.Request<BlockchainScriptHashListUnspentResult> json
             return resObj
@@ -272,6 +278,7 @@ type StratumClient (jsonRpcClient: JsonRpcTcpClient) =
             }
 
         let json = Serialize obj
+
         async {
             let! resObj, _ = self.Request<BlockchainTransactionGetResult> json
             return resObj

@@ -22,7 +22,11 @@ type VersionMismatchDuringDeserializationException (message: string, innerExcept
     inherit DeserializationException(message, innerException)
 
 module internal VersionHelper =
-    let internal CURRENT_VERSION = Assembly.GetExecutingAssembly().GetName().Version.ToString()
+    let internal CURRENT_VERSION =
+        Assembly
+            .GetExecutingAssembly()
+            .GetName()
+            .Version.ToString()
 
 type MarshallingWrapper<'T> =
     {
@@ -46,7 +50,9 @@ type private PascalCase2LowercasePlusUnderscoreContractResolver () =
     let pascalToUnderScoreReplacementExpression = "_$1$2"
 
     override __.ResolvePropertyName (propertyName: string) =
-        pascalToUnderScoreRegex.Replace(propertyName, pascalToUnderScoreReplacementExpression).ToLower()
+        pascalToUnderScoreRegex
+            .Replace(propertyName, pascalToUnderScoreReplacementExpression)
+            .ToLower()
 
 // combine https://stackoverflow.com/a/48330214/544947 with https://stackoverflow.com/a/29660550/544947
 // (because null values should map to None values in the case of Option<> types, otherwise tests fail)
@@ -67,6 +73,7 @@ type RequireAllPropertiesContractResolver () =
 
         if isOption then
             property.Required <- Required.AllowNull
+
         property
 
 module Marshalling =
@@ -90,12 +97,16 @@ module Marshalling =
     let private currentVersion = VersionHelper.CURRENT_VERSION
 
     let ExtractType (json: string): Type =
-        let fullTypeName = (JsonConvert.DeserializeObject<MarshallingWrapper<obj>> json).TypeName
+        let fullTypeName =
+            (JsonConvert.DeserializeObject<MarshallingWrapper<obj>> json)
+                .TypeName
+
         Type.GetType (fullTypeName)
 
     let DeserializeCustom<'T> (json: string, settings: JsonSerializerSettings): 'T =
         if (json = null) then
             raise (ArgumentNullException ("json"))
+
         if (String.IsNullOrWhiteSpace (json)) then
             raise (ArgumentException ("empty or whitespace json", "json"))
 
@@ -104,11 +115,13 @@ module Marshalling =
                 JsonConvert.DeserializeObject<MarshallingWrapper<'T>> (json, settings)
             with ex ->
                 let versionJsonTag = "\"Version\":\""
+
                 if (json.Contains (versionJsonTag)) then
                     let jsonSinceVersion = json.Substring (json.IndexOf (versionJsonTag) + versionJsonTag.Length)
 
                     let endVersionIndex = jsonSinceVersion.IndexOf ("\"")
                     let version = jsonSinceVersion.Substring (0, endVersionIndex)
+
                     if (version <> currentVersion) then
                         let msg =
                             SPrintF2
@@ -117,6 +130,7 @@ module Marshalling =
                                 currentVersion
 
                         raise <| VersionMismatchDuringDeserializationException (msg, ex)
+
                 raise
                 <| DeserializationException (SPrintF1 "Exception when trying to deserialize '%s'" json, ex)
 
@@ -125,10 +139,12 @@ module Marshalling =
             raise
             <| DeserializationException
                 (SPrintF1 "JsonConvert.DeserializeObject returned null when trying to deserialize '%s'" json)
+
         if Object.ReferenceEquals (deserialized.Value, null) then
             raise
             <| DeserializationException
                 (SPrintF1 "JsonConvert.DeserializeObject could not deserialize the Value member of '%s'" json)
+
         deserialized.Value
 
     let Deserialize<'T> (json: string): 'T =

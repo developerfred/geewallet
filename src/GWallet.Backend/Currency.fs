@@ -38,7 +38,9 @@ type Currency =
 #endif
 
     static member Parse (currencyString: string): Currency =
-        Currency.GetAll().First(fun currency -> currencyString = currency.ToString ())
+        Currency
+            .GetAll()
+            .First(fun currency -> currencyString = currency.ToString ())
 
     member self.IsEther () =
         self = Currency.ETC || self = Currency.ETH

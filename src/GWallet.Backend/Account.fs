@@ -9,12 +9,10 @@ open GWallet.Backend.FSharpUtil.UwpHacks
 
 module Account =
 
-    let private GetShowableBalanceInternal
-        (account: IAccount)
-        (mode: ServerSelectionMode)
-        (cancelSourceOption: Option<CustomCancelSource>)
-        : Async<Option<decimal>>
-        =
+    let private GetShowableBalanceInternal (account: IAccount)
+                                           (mode: ServerSelectionMode)
+                                           (cancelSourceOption: Option<CustomCancelSource>)
+                                           : Async<Option<decimal>> =
         match account with
         | :? UtxoCoin.IUtxoAccount as utxoAccount ->
             if not (account.Currency.IsUtxo ()) then
@@ -27,15 +25,14 @@ module Account =
                 failwith
                 <| SPrintF1
                     "Currency %A not ether based and not UTXO either? not supported, report this bug (balance)"
-                       account.Currency
+                    account.Currency
+
             Ether.Account.GetShowableBalance account mode cancelSourceOption
 
-    let GetShowableBalance
-        (account: IAccount)
-        (mode: ServerSelectionMode)
-        (cancelSourceOption: Option<CustomCancelSource>)
-        : Async<MaybeCached<decimal>>
-        =
+    let GetShowableBalance (account: IAccount)
+                           (mode: ServerSelectionMode)
+                           (cancelSourceOption: Option<CustomCancelSource>)
+                           : Async<MaybeCached<decimal>> =
         async {
             if Config.NoNetworkBalanceForDebuggingPurposes then
                 return Fresh 1m
@@ -45,8 +42,8 @@ module Account =
 
                 match maybeBalance with
                 | None ->
-                    return NotFresh
-                               (Caching.Instance.RetrieveLastCompoundBalance account.PublicAddress account.Currency)
+                    return
+                        NotFresh (Caching.Instance.RetrieveLastCompoundBalance account.PublicAddress account.Currency)
                 | Some balance ->
                     let compoundBalance, _ =
                         Caching.Instance.RetrieveAndUpdateLastCompoundBalance
@@ -101,13 +98,15 @@ module Account =
             let utxoCoinPublicKey = UtxoCoin.Account.GetPublicKeyFromNormalAccountFile firstUtxoAccountFile
             let firstEtherAccountFile = etherCurrencyAccountFiles.First ()
             let etherPublicAddress = Ether.Account.GetPublicAddressFromNormalAccountFile firstEtherAccountFile
+
             Some
                 {
                     UtxoCoinPublicKey = utxoCoinPublicKey.ToString ()
                     EtherPublicAddress = etherPublicAddress
                 }
 
-    let GetArchivedAccountsWithPositiveBalance (cancelSourceOption: Option<CustomCancelSource>): Async<seq<ArchivedAccount * decimal>> =
+    let GetArchivedAccountsWithPositiveBalance (cancelSourceOption: Option<CustomCancelSource>)
+                                               : Async<seq<ArchivedAccount * decimal>> =
         let asyncJobs =
             seq<Async<ArchivedAccount * Option<decimal>>> {
                 let allCurrencies = Currency.GetAll ()
@@ -130,32 +129,36 @@ module Account =
                             ArchivedAccount (currency, accountFile, fromConfigAccountFileToPublicAddressFunc)
 
                         let maybeBalanceJob = GetShowableBalanceInternal account ServerSelectionMode.Fast
-                        yield async {
-                                  let! maybeBalance = maybeBalanceJob cancelSourceOption
 
-                                  let positiveBalance =
-                                      match maybeBalance with
-                                      | Some balance ->
-                                          if (balance > 0m) then
-                                              Some (balance)
-                                          else
-                                              None
-                                      | _ -> None
+                        yield
+                            async {
+                                let! maybeBalance = maybeBalanceJob cancelSourceOption
 
-                                  return account, positiveBalance
-                              }
+                                let positiveBalance =
+                                    match maybeBalance with
+                                    | Some balance ->
+                                        if (balance > 0m) then
+                                            Some (balance)
+                                        else
+                                            None
+                                    | _ -> None
+
+                                return account, positiveBalance
+                            }
             }
 
         let executedBalances = Async.Parallel asyncJobs
+
         async {
             let! accountAndPositiveBalances = executedBalances
 
-            return seq {
-                       for account, maybePositiveBalance in accountAndPositiveBalances do
-                           match maybePositiveBalance with
-                           | Some positiveBalance -> yield account, positiveBalance
-                           | _ -> ()
-                   }
+            return
+                seq {
+                    for account, maybePositiveBalance in accountAndPositiveBalances do
+                        match maybePositiveBalance with
+                        | Some positiveBalance -> yield account, positiveBalance
+                        | _ -> ()
+                }
         }
 
     // TODO: add tests for these (just in case address validation breaks after upgrading our dependencies)
@@ -178,7 +181,8 @@ module Account =
                     failwith
                     <| SPrintF1
                         "Currency %A not Utxo-type but account is? report this bug (estimatefee)"
-                           account.Currency
+                        account.Currency
+
                 let! fee = UtxoCoin.Account.EstimateFee utxoAccount amount destination
                 return fee :> IBlockchainFeeInfo
             | _ ->
@@ -186,7 +190,8 @@ module Account =
                     failwith
                     <| SPrintF1
                         "Currency %A not ether based and not UTXO either? not supported, report this bug (estimatefee)"
-                           account.Currency
+                        account.Currency
+
                 let! fee = Ether.Account.EstimateFee account amount destination
                 return fee :> IBlockchainFeeInfo
         }
@@ -220,12 +225,13 @@ module Account =
                     if outOfGas then
                         return failwith <| SPrintF1 "Transaction ran out of gas: %s" txHash
                 with ex ->
-                    return raise
-                           <| Exception
-                               (SPrintF1
-                                   "An issue occurred while trying to check if the following transaction ran out of gas: %s"
-                                    txHash,
-                                ex)
+                    return
+                        raise
+                        <| Exception
+                            (SPrintF1
+                                "An issue occurred while trying to check if the following transaction ran out of gas: %s"
+                                txHash,
+                             ex)
             | _ -> ()
         }
 
@@ -253,13 +259,12 @@ module Account =
             return uri
         }
 
-    let SignTransaction
-        (account: NormalAccount)
-        (destination: string)
-        (amount: TransferAmount)
-        (transactionMetadata: IBlockchainFeeInfo)
-        (password: string)
-        =
+    let SignTransaction (account: NormalAccount)
+                        (destination: string)
+                        (amount: TransferAmount)
+                        (transactionMetadata: IBlockchainFeeInfo)
+                        (password: string)
+                        =
 
         match transactionMetadata with
         | :? Ether.TransactionMetadata as etherTxMetadata ->
@@ -276,18 +281,19 @@ module Account =
         let checkJobs =
             seq {
                 for account in GetAllActiveAccounts().OfType<NormalAccount> () do
-                    yield async {
-                              if (account :> IAccount).Currency.IsEtherBased() then
-                                  try
-                                      Ether.Account.CheckValidPassword account password
-                                      return true
-                                  with :? InvalidPassword -> return false
-                              else
-                                  try
-                                      UtxoCoin.Account.CheckValidPassword account password
-                                      return true
-                                  with :? InvalidPassword -> return false
-                          }
+                    yield
+                        async {
+                            if (account :> IAccount).Currency.IsEtherBased() then
+                                try
+                                    Ether.Account.CheckValidPassword account password
+                                    return true
+                                with :? InvalidPassword -> return false
+                            else
+                                try
+                                    UtxoCoin.Account.CheckValidPassword account password
+                                    return true
+                                with :? InvalidPassword -> return false
+                        }
             }
 
         Async.Parallel checkJobs
@@ -329,7 +335,10 @@ module Account =
         let privateKeyAsString =
             if currency.IsUtxo () then
                 let privKey = UtxoCoin.Account.GetPrivateKey account password
-                privKey.GetWif(UtxoCoin.Account.GetNetwork currency).ToWif()
+
+                privKey
+                    .GetWif(UtxoCoin.Account.GetNetwork currency)
+                    .ToWif()
             elif currency.IsEther () then
                 let privKey = Ether.Account.GetPrivateKey account password
                 privKey.GetPrivateKey ()
@@ -339,12 +348,11 @@ module Account =
         CreateArchivedAccount currency privateKeyAsString |> ignore
         Config.RemoveNormalAccount account
 
-    let SweepArchivedFunds
-        (account: ArchivedAccount)
-        (balance: decimal)
-        (destination: IAccount)
-        (txMetadata: IBlockchainFeeInfo)
-        =
+    let SweepArchivedFunds (account: ArchivedAccount)
+                           (balance: decimal)
+                           (destination: IAccount)
+                           (txMetadata: IBlockchainFeeInfo)
+                           =
         match txMetadata with
         | :? Ether.TransactionMetadata as etherTxMetadata ->
             Ether.Account.SweepArchivedFunds account balance destination etherTxMetadata
@@ -355,15 +363,14 @@ module Account =
             | _ -> failwith "If tx metadata is UTXO type, archived account should be too"
         | _ -> failwith "tx metadata type unknown"
 
-    let SendPayment
-        (account: NormalAccount)
-        (txMetadata: IBlockchainFeeInfo)
-        (destination: string)
-        (amount: TransferAmount)
-        (password: string)
-        : Async<Uri>
-        =
+    let SendPayment (account: NormalAccount)
+                    (txMetadata: IBlockchainFeeInfo)
+                    (destination: string)
+                    (amount: TransferAmount)
+                    (password: string)
+                    : Async<Uri> =
         let baseAccount = account :> IAccount
+
         if (baseAccount.PublicAddress.Equals (destination, StringComparison.InvariantCultureIgnoreCase)) then
             raise DestinationEqualToOrigin
 
@@ -379,7 +386,8 @@ module Account =
                         failwith
                         <| SPrintF1
                             "Currency %A not Utxo-type but tx metadata is? report this bug (sendpayment)"
-                               currency
+                            currency
+
                     match account with
                     | :? UtxoCoin.NormalUtxoAccount as utxoAccount ->
                         UtxoCoin.Account.SendPayment utxoAccount btcTxMetadata destination amount password
@@ -388,6 +396,7 @@ module Account =
                 | :? Ether.TransactionMetadata as etherTxMetadata ->
                     if not (currency.IsEtherBased ()) then
                         failwith "Account not ether-type but tx metadata is? report this bug (sendpayment)"
+
                     Ether.Account.SendPayment account etherTxMetadata destination amount password
                 | _ -> failwith "Unknown tx metadata type"
 
@@ -464,7 +473,9 @@ module Account =
 
     let CreateReadOnlyAccounts (watchWalletInfo: WatchWalletInfo): Async<unit> =
         async {
-            for etherCurrency in Currency.GetAll().Where(fun currency -> currency.IsEtherBased ()) do
+            for etherCurrency in Currency
+                .GetAll()
+                .Where(fun currency -> currency.IsEtherBased ()) do
                 do! ValidateAddress etherCurrency watchWalletInfo.EtherPublicAddress
 
                 let conceptAccountForReadOnlyAccount =
@@ -481,7 +492,9 @@ module Account =
                 Config.AddAccount conceptAccountForReadOnlyAccount AccountKind.ReadOnly
                 |> ignore
 
-            for utxoCurrency in Currency.GetAll().Where(fun currency -> currency.IsUtxo ()) do
+            for utxoCurrency in Currency
+                .GetAll()
+                .Where(fun currency -> currency.IsUtxo ()) do
                 let address =
                     UtxoCoin.Account.GetPublicAddressFromPublicKey
                         utxoCurrency
@@ -507,22 +520,18 @@ module Account =
     let Remove (account: ReadOnlyAccount) =
         Config.RemoveReadOnlyAccount account
 
-    let private CreateConceptEtherAccountInternal
-        (password: string)
-        (seed: array<byte>)
-        : Async<FileRepresentation * (FileRepresentation -> string)>
-        =
+    let private CreateConceptEtherAccountInternal (password: string)
+                                                  (seed: array<byte>)
+                                                  : Async<FileRepresentation * (FileRepresentation -> string)> =
         async {
             let! virtualFile = Ether.Account.Create password seed
             return virtualFile, Ether.Account.GetPublicAddressFromNormalAccountFile
         }
 
-    let private CreateConceptAccountInternal
-        (currency: Currency)
-        (password: string)
-        (seed: array<byte>)
-        : Async<FileRepresentation * (FileRepresentation -> string)>
-        =
+    let private CreateConceptAccountInternal (currency: Currency)
+                                             (password: string)
+                                             (seed: array<byte>)
+                                             : Async<FileRepresentation * (FileRepresentation -> string)> =
         async {
             if currency.IsUtxo () then
                 let! virtualFile = UtxoCoin.Account.Create currency password seed
@@ -538,40 +547,44 @@ module Account =
         async {
             let! virtualFile, fromEncPrivKeyToPublicAddressFunc = CreateConceptAccountInternal currency password seed
 
-            return {
-                       Currency = currency
-                       FileRepresentation = virtualFile
-                       ExtractPublicAddressFromConfigFileFunc = fromEncPrivKeyToPublicAddressFunc
-                   }
+            return
+                {
+                    Currency = currency
+                    FileRepresentation = virtualFile
+                    ExtractPublicAddressFromConfigFileFunc = fromEncPrivKeyToPublicAddressFunc
+                }
         }
 
-    let private CreateConceptAccountAux
-        (currency: Currency)
-        (password: string)
-        (seed: array<byte>)
-        : Async<List<ConceptAccount>>
-        =
+    let private CreateConceptAccountAux (currency: Currency)
+                                        (password: string)
+                                        (seed: array<byte>)
+                                        : Async<List<ConceptAccount>> =
         async {
             let! singleAccount = CreateConceptAccount currency password seed
             return singleAccount :: List.Empty
         }
 
     let CreateEtherNormalAccounts (password: string) (seed: array<byte>): Async<List<ConceptAccount>> =
-        let supportedEtherCurrencies = Currency.GetAll().Where(fun currency -> currency.IsEtherBased ())
+        let supportedEtherCurrencies =
+            Currency
+                .GetAll()
+                .Where(fun currency -> currency.IsEtherBased ())
 
         let etherAccounts =
             async {
                 let! virtualFile, fromEncPrivKeyToPublicAddressFunc = CreateConceptEtherAccountInternal password seed
 
-                return seq {
-                           for etherCurrency in supportedEtherCurrencies do
-                               yield {
-                                         Currency = etherCurrency
-                                         FileRepresentation = virtualFile
-                                         ExtractPublicAddressFromConfigFileFunc = fromEncPrivKeyToPublicAddressFunc
-                                     }
-                       }
-                       |> List.ofSeq
+                return
+                    seq {
+                        for etherCurrency in supportedEtherCurrencies do
+                            yield
+                                {
+                                    Currency = etherCurrency
+                                    FileRepresentation = virtualFile
+                                    ExtractPublicAddressFromConfigFileFunc = fromEncPrivKeyToPublicAddressFunc
+                                }
+                    }
+                    |> List.ofSeq
             }
 
         etherAccounts
@@ -580,12 +593,10 @@ module Account =
         let newAccountFile = Config.AddAccount conceptAccount AccountKind.Normal
         NormalAccount (conceptAccount.Currency, newAccountFile, conceptAccount.ExtractPublicAddressFromConfigFileFunc)
 
-    let GenerateMasterPrivateKey
-        (passphrase: string)
-        (dobPartOfSalt: DateTime)
-        (emailPartOfSalt: string)
-        : Async<array<byte>>
-        =
+    let GenerateMasterPrivateKey (passphrase: string)
+                                 (dobPartOfSalt: DateTime)
+                                 (emailPartOfSalt: string)
+                                 : Async<array<byte>> =
         async {
             let salt =
                 SPrintF2 "%s+%s" (dobPartOfSalt.Date.ToString ("yyyyMMdd")) (emailPartOfSalt.ToLower ())
@@ -594,10 +605,16 @@ module Account =
             return privateKeyBytes
         }
 
-    let CreateAllConceptAccounts (privateKeyBytes: array<byte>) (encryptionPassword: string): Async<seq<ConceptAccount>> =
+    let CreateAllConceptAccounts (privateKeyBytes: array<byte>)
+                                 (encryptionPassword: string)
+                                 : Async<seq<ConceptAccount>> =
         async {
             let etherAccounts = CreateEtherNormalAccounts encryptionPassword privateKeyBytes
-            let nonEthCurrencies = Currency.GetAll().Where(fun currency -> not (currency.IsEtherBased ()))
+
+            let nonEthCurrencies =
+                Currency
+                    .GetAll()
+                    .Where(fun currency -> not (currency.IsEtherBased ()))
 
             let nonEtherAccounts: List<Async<List<ConceptAccount>>> =
                 seq {
@@ -637,15 +654,17 @@ module Account =
             let! masterPrivateKey = GenerateMasterPrivateKey passphrase dobPartOfSalt emailPartOfSalt
             let! allConceptAccounts = CreateAllConceptAccounts masterPrivateKey (Guid.NewGuid().ToString())
 
-            return allConceptAccounts.All (fun conceptAccount ->
-                       GetAllActiveAccounts()
-                           .Any(fun account ->
-                               let publicAddressOfConceptAccount =
-                                   conceptAccount.ExtractPublicAddressFromConfigFileFunc
-                                       conceptAccount.FileRepresentation
+            return
+                allConceptAccounts.All
+                    (fun conceptAccount ->
+                        GetAllActiveAccounts()
+                            .Any(fun account ->
+                                let publicAddressOfConceptAccount =
+                                    conceptAccount.ExtractPublicAddressFromConfigFileFunc
+                                        conceptAccount.FileRepresentation
 
-                               let publicAddressMatches = (account.PublicAddress = publicAddressOfConceptAccount)
-                               publicAddressMatches))
+                                let publicAddressMatches = (account.PublicAddress = publicAddressOfConceptAccount)
+                                publicAddressMatches))
         }
 
     let WipeAll () =
@@ -655,11 +674,9 @@ module Account =
     let public ExportUnsignedTransactionToJson trans =
         Marshalling.Serialize trans
 
-    let private SerializeUnsignedTransactionPlain
-        (transProposal: UnsignedTransactionProposal)
-        (txMetadata: IBlockchainFeeInfo)
-        : string
-        =
+    let private SerializeUnsignedTransactionPlain (transProposal: UnsignedTransactionProposal)
+                                                  (txMetadata: IBlockchainFeeInfo)
+                                                  : string =
         let readOnlyAccounts = GetAllActiveAccounts().OfType<ReadOnlyAccount> ()
 
         match txMetadata with
@@ -669,11 +686,10 @@ module Account =
             UtxoCoin.Account.SaveUnsignedTransaction transProposal btcTxMetadata readOnlyAccounts
         | _ -> failwith "fee type unknown"
 
-    let SaveUnsignedTransaction
-        (transProposal: UnsignedTransactionProposal)
-        (txMetadata: IBlockchainFeeInfo)
-        (filePath: string)
-        =
+    let SaveUnsignedTransaction (transProposal: UnsignedTransactionProposal)
+                                (txMetadata: IBlockchainFeeInfo)
+                                (filePath: string)
+                                =
         let json = SerializeUnsignedTransactionPlain transProposal txMetadata
         File.WriteAllText (filePath, json)
 

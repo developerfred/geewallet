@@ -37,7 +37,7 @@ module ElectrumClient =
                         <| ServerTooNewException
                             (SPrintF1
                                 "Version of server rejects our client version (%s)"
-                                 (PROTOCOL_VERSION_SUPPORTED.ToString ()))
+                                (PROTOCOL_VERSION_SUPPORTED.ToString ()))
                     else
                         reraise ()
 
@@ -46,17 +46,20 @@ module ElectrumClient =
                     (ServerTooOldException
                         (SPrintF2
                             "Version of server is older (%s) than the client (%s)"
-                             (versionSupportedByServer.ToString ())
-                             (PROTOCOL_VERSION_SUPPORTED.ToString ())))
+                            (versionSupportedByServer.ToString ())
+                            (PROTOCOL_VERSION_SUPPORTED.ToString ())))
 
             return stratumClient
         }
 
     let StratumServer (electrumServer: ServerDetails): Async<StratumClient> =
         match electrumServer.ServerInfo.ConnectionType with
-        | { Encrypted = true; Protocol = _ } -> failwith "Incompatibility filter for non-encryption didn't work?"
-        | { Encrypted = false; Protocol = Http } -> failwith "HTTP server for UtxoCoin?"
-        | { Encrypted = false; Protocol = Tcp port } -> Init electrumServer.ServerInfo.NetworkPath port
+        | { Encrypted = true
+            Protocol = _ } -> failwith "Incompatibility filter for non-encryption didn't work?"
+        | { Encrypted = false
+            Protocol = Http } -> failwith "HTTP server for UtxoCoin?"
+        | { Encrypted = false
+            Protocol = Tcp port } -> Init electrumServer.ServerInfo.NetworkPath port
 
     let GetBalance (scriptHash: string) (stratumServer: Async<StratumClient>) =
         async {
@@ -99,12 +102,16 @@ module ElectrumClient =
             let! estimateFeeResult = stratumClient.BlockchainEstimateFee numBlocksTarget
 
             if estimateFeeResult.Result = -1m then
-                return raise
-                       <| ServerMisconfiguredException ("Fee estimation returned a -1 error code")
+                return
+                    raise
+                    <| ServerMisconfiguredException ("Fee estimation returned a -1 error code")
             elif estimateFeeResult.Result <= 0m then
-                return raise
-                       <| ServerMisconfiguredException
-                           (SPrintF1 "Fee estimation returned an invalid non-positive value %M" estimateFeeResult.Result)
+                return
+                    raise
+                    <| ServerMisconfiguredException
+                        (SPrintF1 "Fee estimation returned an invalid non-positive value %M" estimateFeeResult.Result)
+
+
 
 
             return estimateFeeResult.Result
