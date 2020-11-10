@@ -12,13 +12,16 @@ open GWallet.Backend.FSharpUtil.UwpHacks
 type DeserializationException =
     inherit Exception
 
-    new(message: string, innerException: Exception) = { inherit Exception(message, innerException) }
+    new(message: string, innerException: Exception) =
+        { inherit Exception(message, innerException) }
+
     new(message: string) = { inherit Exception(message) }
 
 type SerializationException (message: string, innerException: Exception) =
     inherit Exception(message, innerException)
 
-type VersionMismatchDuringDeserializationException (message: string, innerException: Exception) =
+type VersionMismatchDuringDeserializationException (message: string,
+                                                    innerException: Exception) =
     inherit DeserializationException(message, innerException)
 
 module internal VersionHelper =
@@ -46,7 +49,10 @@ type private PascalCase2LowercasePlusUnderscoreContractResolver () =
     inherit DefaultContractResolver()
 
     // https://stackoverflow.com/a/20952003/544947
-    let pascalToUnderScoreRegex = Regex ("((?<=.)[A-Z][a-zA-Z]*)|((?<=[a-zA-Z])\d+)", RegexOptions.Multiline)
+    let pascalToUnderScoreRegex =
+        Regex
+            ("((?<=.)[A-Z][a-zA-Z]*)|((?<=[a-zA-Z])\d+)", RegexOptions.Multiline)
+
     let pascalToUnderScoreReplacementExpression = "_$1$2"
 
     override __.ResolvePropertyName (propertyName: string) =
@@ -64,7 +70,8 @@ type RequireAllPropertiesContractResolver () =
         contract.ItemRequired <- Nullable<Required> Required.Always
         contract
 
-    override __.CreateProperty (memberInfo: MemberInfo, memberSerialization: MemberSerialization) =
+    override __.CreateProperty (memberInfo: MemberInfo,
+                                memberSerialization: MemberSerialization) =
         let property = base.CreateProperty (memberInfo, memberSerialization)
         // https://stackoverflow.com/questions/20696262/reflection-to-find-out-if-property-is-of-option-type
         let isOption =
@@ -86,7 +93,9 @@ module Marshalling =
 #endif
 
     let internal PascalCase2LowercasePlusUnderscoreConversionSettings =
-        JsonSerializerSettings (ContractResolver = PascalCase2LowercasePlusUnderscoreContractResolver ())
+        JsonSerializerSettings
+            (ContractResolver =
+                PascalCase2LowercasePlusUnderscoreContractResolver ())
 
     let internal DefaultSettings =
         JsonSerializerSettings
@@ -103,7 +112,8 @@ module Marshalling =
 
         Type.GetType (fullTypeName)
 
-    let DeserializeCustom<'T> (json: string, settings: JsonSerializerSettings): 'T =
+    let DeserializeCustom<'T> (json: string, settings: JsonSerializerSettings)
+                              : 'T =
         if (json = null) then
             raise (ArgumentNullException ("json"))
 
@@ -112,15 +122,21 @@ module Marshalling =
 
         let deserialized =
             try
-                JsonConvert.DeserializeObject<MarshallingWrapper<'T>> (json, settings)
+                JsonConvert.DeserializeObject<MarshallingWrapper<'T>>
+                    (json, settings)
             with ex ->
                 let versionJsonTag = "\"Version\":\""
 
                 if (json.Contains (versionJsonTag)) then
-                    let jsonSinceVersion = json.Substring (json.IndexOf (versionJsonTag) + versionJsonTag.Length)
+                    let jsonSinceVersion =
+                        json.Substring
+                            (json.IndexOf (versionJsonTag)
+                             + versionJsonTag.Length)
 
                     let endVersionIndex = jsonSinceVersion.IndexOf ("\"")
-                    let version = jsonSinceVersion.Substring (0, endVersionIndex)
+
+                    let version =
+                        jsonSinceVersion.Substring (0, endVersionIndex)
 
                     if (version <> currentVersion) then
                         let msg =
@@ -129,37 +145,53 @@ module Marshalling =
                                 version
                                 currentVersion
 
-                        raise <| VersionMismatchDuringDeserializationException (msg, ex)
+                        raise
+                        <| VersionMismatchDuringDeserializationException
+                            (msg, ex)
 
                 raise
-                <| DeserializationException (SPrintF1 "Exception when trying to deserialize '%s'" json, ex)
+                <| DeserializationException
+                    (SPrintF1 "Exception when trying to deserialize '%s'" json,
+                     ex)
 
 
         if Object.ReferenceEquals (deserialized, null) then
             raise
             <| DeserializationException
-                (SPrintF1 "JsonConvert.DeserializeObject returned null when trying to deserialize '%s'" json)
+                (SPrintF1
+                    "JsonConvert.DeserializeObject returned null when trying to deserialize '%s'"
+                    json)
 
         if Object.ReferenceEquals (deserialized.Value, null) then
             raise
             <| DeserializationException
-                (SPrintF1 "JsonConvert.DeserializeObject could not deserialize the Value member of '%s'" json)
+                (SPrintF1
+                    "JsonConvert.DeserializeObject could not deserialize the Value member of '%s'"
+                    json)
 
         deserialized.Value
 
     let Deserialize<'T> (json: string): 'T =
         DeserializeCustom (json, DefaultSettings)
 
-    let private SerializeInternal<'T> (value: 'T) (settings: JsonSerializerSettings): string =
-        JsonConvert.SerializeObject (MarshallingWrapper<'T>.New value, DefaultFormatting, settings)
+    let private SerializeInternal<'T> (value: 'T)
+                                      (settings: JsonSerializerSettings)
+                                      : string =
+        JsonConvert.SerializeObject
+            (MarshallingWrapper<'T>.New value, DefaultFormatting, settings)
 
-    let SerializeCustom<'T> (value: 'T, settings: JsonSerializerSettings): string =
+    let SerializeCustom<'T> (value: 'T, settings: JsonSerializerSettings)
+                            : string =
         try
             SerializeInternal value settings
         with exn ->
             raise
                 (SerializationException
-                    (SPrintF2 "Could not serialize object of type '%s' and value '%A'" (typeof<'T>.FullName) value, exn))
+                    (SPrintF2
+                        "Could not serialize object of type '%s' and value '%A'"
+                        (typeof<'T>.FullName)
+                        value,
+                     exn))
 
     let Serialize<'T> (value: 'T): string =
         SerializeCustom (value, DefaultSettings)

@@ -62,7 +62,8 @@ type Currency =
         elif self = Currency.SAI then
             18
         else
-            failwith <| SPrintF1 "Unable to determine decimal places for %A" self
+            failwith
+            <| SPrintF1 "Unable to determine decimal places for %A" self
 
     override self.ToString () =
 #if STRICTER_COMPILATION_BUT_WITH_REFLECTION_AT_RUNTIME
@@ -89,5 +90,9 @@ and private StringTypeConverter () =
 
     override __.ConvertFrom (context, culture, value) =
         match value with
-        | :? string as stringValue -> Seq.find (fun cur -> cur.ToString () = stringValue) (Currency.GetAll ()) :> obj
+        | :? string as stringValue ->
+            Seq.find
+                (fun cur -> cur.ToString () = stringValue)
+                (Currency.GetAll ())
+            :> obj
         | _ -> base.ConvertFrom (context, culture, value)

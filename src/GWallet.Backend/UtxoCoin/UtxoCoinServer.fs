@@ -21,7 +21,9 @@ module Server =
         | ServerSelectionMode.Fast -> 3u
         | ServerSelectionMode.Analysis -> 2u
 
-    let private FaultTolerantParallelClientDefaultSettings (mode: ServerSelectionMode) maybeConsistencyConfig =
+    let private FaultTolerantParallelClientDefaultSettings (mode: ServerSelectionMode)
+                                                           maybeConsistencyConfig
+                                                           =
         let consistencyConfig =
             match maybeConsistencyConfig with
             | None -> SpecificNumberOfConsistentResponsesRequired 2u
@@ -30,7 +32,8 @@ module Server =
         {
             NumberOfParallelJobsAllowed = NumberOfParallelJobsForMode mode
             NumberOfRetries = Config.NUMBER_OF_RETRIES_TO_SAME_SERVERS
-            NumberOfRetriesForInconsistency = Config.NUMBER_OF_RETRIES_TO_SAME_SERVERS
+            NumberOfRetriesForInconsistency =
+                Config.NUMBER_OF_RETRIES_TO_SAME_SERVERS
             ExceptionHandler = Some (fun ex -> Infrastructure.ReportWarning ex)
             ResultSelectionMode =
                 Selective
@@ -51,14 +54,17 @@ module Server =
                                                                    =
         let consistencyConfig =
             if mode = ServerSelectionMode.Fast then
-                Some (OneServerConsistentWithCertainValueOrTwoServers cacheOrInitialBalanceMatchFunc)
+                Some
+                    (OneServerConsistentWithCertainValueOrTwoServers
+                        cacheOrInitialBalanceMatchFunc)
             else
                 None
 
         FaultTolerantParallelClientDefaultSettings mode consistencyConfig
 
     let private faultTolerantElectrumClient =
-        FaultTolerantParallelClient<ServerDetails, ServerDiscardedException> Caching.Instance.SaveServerLastStat
+        FaultTolerantParallelClient<ServerDetails, ServerDiscardedException>
+            Caching.Instance.SaveServerLastStat
 
     // FIXME: seems there's some code duplication between this function and EtherServer.fs's GetServerFuncs function
     //        and room for simplification to not pass a new ad-hoc delegate?
@@ -77,13 +83,18 @@ module Server =
                 // NOTE: try to make this 'with' block be in sync with the one in EtherServer:GetWeb3Funcs()
                 with
                     | :? CommunicationUnsuccessfulException as ex ->
-                        let msg = SPrintF2 "%s: %s" (ex.GetType().FullName) ex.Message
+                        let msg =
+                            SPrintF2 "%s: %s" (ex.GetType().FullName) ex.Message
+
                         return raise <| ServerDiscardedException (msg, ex)
                     | ex ->
                         return
                             raise
                             <| Exception
-                                (SPrintF1 "Some problem when connecting to %s" server.ServerInfo.NetworkPath, ex)
+                                (SPrintF1
+                                    "Some problem when connecting to %s"
+                                    server.ServerInfo.NetworkPath,
+                                 ex)
             }
 
         let ElectrumServerToGenericServer (electrumClientFunc: Async<StratumClient> -> Async<'R>)
@@ -91,10 +102,17 @@ module Server =
                                           : Server<ServerDetails, 'R> =
             {
                 Details = electrumServer
-                Retrieval = ElectrumServerToRetrievalFunc electrumServer electrumClientFunc
+                Retrieval =
+                    ElectrumServerToRetrievalFunc
+                        electrumServer
+                        electrumClientFunc
             }
 
-        let serverFuncs = Seq.map (ElectrumServerToGenericServer electrumClientFunc) electrumServers
+        let serverFuncs =
+            Seq.map
+                (ElectrumServerToGenericServer electrumClientFunc)
+                electrumServers
+
         serverFuncs
 
     let private GetRandomizedFuncs<'R> (currency: Currency)
@@ -112,18 +130,25 @@ module Server =
         let query =
             match cancelSourceOption with
             | None -> faultTolerantElectrumClient.Query
-            | Some cancelSource -> faultTolerantElectrumClient.QueryWithCancellation cancelSource
+            | Some cancelSource ->
+                faultTolerantElectrumClient.QueryWithCancellation cancelSource
 
         let querySettings =
             match settings with
-            | Default mode -> FaultTolerantParallelClientDefaultSettings mode None
-            | Balance (mode, predicate) -> FaultTolerantParallelClientSettingsForBalanceCheck mode predicate
+            | Default mode ->
+                FaultTolerantParallelClientDefaultSettings mode None
+            | Balance (mode, predicate) ->
+                FaultTolerantParallelClientSettingsForBalanceCheck
+                    mode
+                    predicate
             | FeeEstimation averageFee ->
                 let minResponsesRequired = 3u
 
                 FaultTolerantParallelClientDefaultSettings
                     ServerSelectionMode.Fast
-                    (Some (AverageBetweenResponses (minResponsesRequired, averageFee)))
+                    (Some
+                        (AverageBetweenResponses
+                            (minResponsesRequired, averageFee)))
             | Broadcast -> FaultTolerantParallelClientSettingsForBroadcast ()
 
         query querySettings (GetRandomizedFuncs currency job)

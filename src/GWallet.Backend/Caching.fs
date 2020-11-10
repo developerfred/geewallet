@@ -37,7 +37,10 @@ type CachedNetworkData =
                     for currencyStr in currencies do
                         match dietCache.Balances.TryFind currencyStr with
                         | None -> ()
-                        | Some balance -> yield (Currency.Parse currencyStr), Map.empty.Add (address, (balance, now))
+                        | Some balance ->
+                            yield
+                                (Currency.Parse currencyStr),
+                                Map.empty.Add (address, (balance, now))
             }
             |> Map.ofSeq
 
@@ -60,26 +63,33 @@ type CachedNetworkData =
                     | Some currencies -> currencies
 
                 let newAcc =
-                    acc.Add (head.PublicAddress, head.Currency.ToString () :: existingCurrenciesForHeadAddress)
+                    acc.Add
+                        (head.PublicAddress,
+                         head.Currency.ToString ()
+                         :: existingCurrenciesForHeadAddress)
 
                 extractAddressesFromAccounts newAcc tail
 
         let fiatPrices =
             [
-                for (KeyValue (currency, (price, _))) in self.UsdPrice -> currency.ToString (), price
+                for (KeyValue (currency, (price, _))) in self.UsdPrice ->
+                    currency.ToString (), price
             ]
             |> Map.ofSeq
 
         let addresses =
             extractAddressesFromAccounts
                 Map.empty
-                (List.ofSeq readOnlyAccounts |> List.map (fun acc -> acc :> IAccount))
+                (List.ofSeq readOnlyAccounts
+                 |> List.map (fun acc -> acc :> IAccount))
 
         let balances =
             seq {
                 for (KeyValue (currency, currencyBalances)) in self.Balances do
                     for (KeyValue (address, (balance, _))) in currencyBalances do
-                        if readOnlyAccounts.Any (fun account -> (account :> IAccount).PublicAddress = address) then
+                        if readOnlyAccounts.Any
+                            (fun account ->
+                                (account :> IAccount).PublicAddress = address) then
                             yield (currency.ToString (), balance)
             }
             |> Map.ofSeq
@@ -109,9 +119,14 @@ module Caching =
 
     let private defaultCacheFiles =
         {
-            CachedNetworkData = FileInfo (Path.Combine (GetCacheDir().FullName, "networkdata.json"))
+            CachedNetworkData =
+                FileInfo
+                    (Path.Combine (GetCacheDir().FullName, "networkdata.json"))
             ServerStats =
-                FileInfo (Path.Combine (GetCacheDir().FullName, ServerRegistry.ServersEmbeddedResourceFileName))
+                FileInfo
+                    (Path.Combine
+                        (GetCacheDir().FullName,
+                         ServerRegistry.ServersEmbeddedResourceFileName))
         }
 
     let public ImportFromJson<'T> (cacheData: string): 'T =
@@ -125,7 +140,8 @@ module Caching =
         else
             Some json
 
-    let droppedCachedMsgWarning = "Warning: cleaning incompatible cache data found from different GWallet version"
+    let droppedCachedMsgWarning =
+        "Warning: cleaning incompatible cache data found from different GWallet version"
 
     let private LoadFromDiskInternal<'T> (file: FileInfo): Option<'T> =
         try
@@ -141,8 +157,12 @@ module Caching =
                         None
                     | :? DeserializationException ->
                         // FIXME: report a warning to sentry here...
-                        Infrastructure.LogError "Warning: cleaning incompatible cache data found"
-                        Infrastructure.LogDebug (SPrintF1 "JSON content: <<<%s>>>" json)
+                        Infrastructure.LogError
+                            "Warning: cleaning incompatible cache data found"
+
+                        Infrastructure.LogDebug
+                            (SPrintF1 "JSON content: <<<%s>>>" json)
+
                         None
         with :? FileNotFoundException -> None
 
@@ -151,20 +171,24 @@ module Caching =
     let private WeirdNullCheckToDetectVersionConflicts x =
         Object.ReferenceEquals (x, null)
 
-    let private LoadFromDisk (files: CacheFiles): bool * CachedNetworkData * ServerRanking =
-        let maybeNetworkData = LoadFromDiskInternal<CachedNetworkData> files.CachedNetworkData
+    let private LoadFromDisk (files: CacheFiles)
+                             : bool * CachedNetworkData * ServerRanking =
+        let maybeNetworkData =
+            LoadFromDiskInternal<CachedNetworkData> files.CachedNetworkData
 
         let maybeFirstRun, resultingNetworkData =
             match maybeNetworkData with
             | None -> true, CachedNetworkData.Empty
             | Some networkData ->
-                if WeirdNullCheckToDetectVersionConflicts networkData.OutgoingTransactions then
+                if WeirdNullCheckToDetectVersionConflicts
+                    networkData.OutgoingTransactions then
                     Infrastructure.LogError droppedCachedMsgWarning
                     true, CachedNetworkData.Empty
                 else
                     false, networkData
 
-        let maybeServerStats = LoadFromDiskInternal<ServerRanking> files.ServerStats
+        let maybeServerStats =
+            LoadFromDiskInternal<ServerRanking> files.ServerStats
 
         match maybeServerStats with
         | None -> maybeFirstRun, resultingNetworkData, Map.empty
@@ -196,7 +220,9 @@ module Caching =
 
                 MergeRatesInternal oldMap newMap tail newAcc
 
-    let private MergeRates (oldMap: Map<'K, CachedValue<'V>>) (newMap: Map<'K, CachedValue<'V>>) =
+    let private MergeRates (oldMap: Map<'K, CachedValue<'V>>)
+                           (newMap: Map<'K, CachedValue<'V>>)
+                           =
         let currencyList = Map.toList newMap |> List.map fst
         MergeRatesInternal oldMap newMap currencyList oldMap
 
@@ -213,17 +239,28 @@ module Caching =
             match maybeCachedBalances with
             | None ->
                 let newCachedBalance = newMap.[currency].[address]
-                let newCachedBalancesForThisCurrency = [ (address, newCachedBalance) ] |> Map.ofList
-                let newAcc = accumulator.Add (currency, newCachedBalancesForThisCurrency)
+
+                let newCachedBalancesForThisCurrency =
+                    [ (address, newCachedBalance) ] |> Map.ofList
+
+                let newAcc =
+                    accumulator.Add (currency, newCachedBalancesForThisCurrency)
+
                 MergeBalancesInternal oldMap newMap tail newAcc
             | Some (balancesMapForCurrency) ->
                 let accBalancesForThisCurrency = accumulator.[currency]
-                let maybeCachedBalance = Map.tryFind address balancesMapForCurrency
+
+                let maybeCachedBalance =
+                    Map.tryFind address balancesMapForCurrency
 
                 match maybeCachedBalance with
                 | None ->
                     let newCachedBalance = newMap.[currency].[address]
-                    let newAccBalances = accBalancesForThisCurrency.Add (address, newCachedBalance)
+
+                    let newAccBalances =
+                        accBalancesForThisCurrency.Add
+                            (address, newCachedBalance)
+
                     let newAcc = accumulator.Add (currency, newAccBalances)
                     MergeBalancesInternal oldMap newMap tail newAcc
                 | Some (_, time) ->
@@ -231,7 +268,10 @@ module Caching =
 
                     let newAcc =
                         if (newTime > time) then
-                            let newAccBalances = accBalancesForThisCurrency.Add (address, (newBalance, newTime))
+                            let newAccBalances =
+                                accBalancesForThisCurrency.Add
+                                    (address, (newBalance, newTime))
+
                             accumulator.Add (currency, newAccBalances)
                         else
                             accumulator
@@ -263,10 +303,12 @@ module Caching =
 
         comb List.Empty lst
 
-    let MapCombinations<'K, 'V when 'K: comparison> (map: Map<'K, 'V>): List<List<'K * 'V>> =
+    let MapCombinations<'K, 'V when 'K: comparison> (map: Map<'K, 'V>)
+                                                    : List<List<'K * 'V>> =
         Map.toList map |> ListCombinations
 
-    type MainCache (maybeCacheFiles: Option<CacheFiles>, unconfTxExpirationSpan: TimeSpan) =
+    type MainCache (maybeCacheFiles: Option<CacheFiles>,
+                    unconfTxExpirationSpan: TimeSpan) =
         let cacheFiles =
             match maybeCacheFiles with
             | Some files -> files
@@ -276,7 +318,8 @@ module Caching =
             let networkDataInJson = Marshalling.Serialize newCachedData
 
             // it is assumed that SaveToDisk is being run under a lock() block
-            File.WriteAllText (cacheFiles.CachedNetworkData.FullName, networkDataInJson)
+            File.WriteAllText
+                (cacheFiles.CachedNetworkData.FullName, networkDataInJson)
 
         // we return back the rankings because the serialization process could remove dupes (and deserialization time
         // is basically negligible, i.e. took 15 milliseconds max in my MacBook in Debug mode)
@@ -284,7 +327,8 @@ module Caching =
             let serverStatsInJson = ServerRegistry.Serialize serverStats
 
             // it is assumed that SaveToDisk is being run under a lock() block
-            File.WriteAllText (cacheFiles.ServerStats.FullName, serverStatsInJson)
+            File.WriteAllText
+                (cacheFiles.ServerStats.FullName, serverStatsInJson)
 
             match LoadFromDiskInternal<ServerRanking> cacheFiles.ServerStats with
             | None -> failwith "should return something after having saved it"
@@ -305,7 +349,9 @@ module Caching =
 
             mergedServers
 
-        let firstRun, initialSessionCachedNetworkData, lastServerStats = LoadFromDisk cacheFiles
+        let firstRun, initialSessionCachedNetworkData, lastServerStats =
+            LoadFromDisk cacheFiles
+
         let initialServerStats = InitServers lastServerStats
 
         let mutable sessionCachedNetworkData = initialSessionCachedNetworkData
@@ -340,33 +386,54 @@ module Caching =
             | [] -> map
             | (key, _) :: tail -> RemoveRangeFromMap (map.Remove key) tail
 
-        let GatherDebuggingInfo (previousBalance) (currency) (address) (newCache) =
+        let GatherDebuggingInfo (previousBalance)
+                                (currency)
+                                (address)
+                                (newCache)
+                                =
             let json1 = Marshalling.Serialize previousBalance
             let json2 = Marshalling.Serialize currency
             let json3 = Marshalling.Serialize address
             let json4 = Marshalling.Serialize newCache
             String.Join (Environment.NewLine, json1, json2, json3, json4)
 
-        let ReportProblem (negativeBalance: decimal) (previousBalance) (currency) (address) (newCache) =
+        let ReportProblem (negativeBalance: decimal)
+                          (previousBalance)
+                          (currency)
+                          (address)
+                          (newCache)
+                          =
             Infrastructure.ReportError
                 (SPrintF2
                     "Negative balance '%s'. Details: %s"
                     (negativeBalance.ToString ())
-                    (GatherDebuggingInfo previousBalance currency address newCache))
+                    (GatherDebuggingInfo
+                        previousBalance
+                        currency
+                        address
+                        newCache))
 
         member __.ClearAll () =
             SaveNetworkDataToDisk CachedNetworkData.Empty
             SaveServerRankingsToDisk Map.empty |> ignore
 
         member __.SaveSnapshot (newDietCachedData: DietCache) =
-            let newCachedData = CachedNetworkData.FromDietCache newDietCachedData
+            let newCachedData =
+                CachedNetworkData.FromDietCache newDietCachedData
 
             lock
                 cacheFiles.CachedNetworkData
                 (fun _ ->
                     let newSessionCachedNetworkData =
-                        let mergedBalances = MergeBalances sessionCachedNetworkData.Balances newCachedData.Balances
-                        let mergedUsdPrices = MergeRates sessionCachedNetworkData.UsdPrice newCachedData.UsdPrice
+                        let mergedBalances =
+                            MergeBalances
+                                sessionCachedNetworkData.Balances
+                                newCachedData.Balances
+
+                        let mergedUsdPrices =
+                            MergeRates
+                                sessionCachedNetworkData.UsdPrice
+                                newCachedData.UsdPrice
 
                         { sessionCachedNetworkData with
                             UsdPrice = mergedUsdPrices
@@ -377,7 +444,9 @@ module Caching =
                     SaveNetworkDataToDisk newSessionCachedNetworkData)
 
         member __.GetLastCachedData (): CachedNetworkData =
-            lock cacheFiles.CachedNetworkData (fun _ -> sessionCachedNetworkData)
+            lock
+                cacheFiles.CachedNetworkData
+                (fun _ -> sessionCachedNetworkData)
 
         member __.RetrieveLastKnownUsdPrice currency: NotFresh<decimal> =
             lock
@@ -385,9 +454,11 @@ module Caching =
                 (fun _ ->
                     try
                         Cached (sessionCachedNetworkData.UsdPrice.Item currency)
-                    with :? System.Collections.Generic.KeyNotFoundException -> NotAvailable)
+                    with :? System.Collections.Generic.KeyNotFoundException ->
+                        NotAvailable)
 
-        member __.StoreLastFiatUsdPrice (currency, lastFiatUsdPrice: decimal): unit =
+        member __.StoreLastFiatUsdPrice (currency, lastFiatUsdPrice: decimal)
+                                         : unit =
             lock
                 cacheFiles.CachedNetworkData
                 (fun _ ->
@@ -395,38 +466,57 @@ module Caching =
 
                     let newCachedValue =
                         { sessionCachedNetworkData with
-                            UsdPrice = sessionCachedNetworkData.UsdPrice.Add (currency, (lastFiatUsdPrice, time))
+                            UsdPrice =
+                                sessionCachedNetworkData.UsdPrice.Add
+                                    (currency, (lastFiatUsdPrice, time))
                         }
 
                     sessionCachedNetworkData <- newCachedValue
 
                     SaveNetworkDataToDisk newCachedValue)
 
-        member __.RetrieveLastCompoundBalance (address: PublicAddress) (currency: Currency): NotFresh<decimal> =
+        member __.RetrieveLastCompoundBalance (address: PublicAddress)
+                                              (currency: Currency)
+                                              : NotFresh<decimal> =
             lock
                 cacheFiles.CachedNetworkData
                 (fun _ ->
                     let balance =
                         try
-                            Cached ((sessionCachedNetworkData.Balances.Item currency).Item address)
-                        with :? System.Collections.Generic.KeyNotFoundException -> NotAvailable
+                            Cached
+                                ((sessionCachedNetworkData.Balances.Item
+                                    currency).Item address)
+                        with :? System.Collections.Generic.KeyNotFoundException ->
+                            NotAvailable
 
                     match balance with
                     | NotAvailable -> NotAvailable
                     | Cached (balance, time) ->
                         let allTransSum =
-                            GetSumOfAllTransactions sessionCachedNetworkData.OutgoingTransactions currency address
+                            GetSumOfAllTransactions
+                                sessionCachedNetworkData.OutgoingTransactions
+                                currency
+                                address
 
                         let compoundBalance = balance - allTransSum
 
                         if (compoundBalance < 0.0m) then
-                            ReportProblem compoundBalance None currency address sessionCachedNetworkData
+                            ReportProblem
+                                compoundBalance
+                                None
+                                currency
+                                address
+                                sessionCachedNetworkData
+
                             Cached (0.0m, time)
                         else
                             Cached (compoundBalance, time))
 
-        member self.TryRetrieveLastCompoundBalance (address: PublicAddress) (currency: Currency): Option<decimal> =
-            let maybeCachedBalance = self.RetrieveLastCompoundBalance address currency
+        member self.TryRetrieveLastCompoundBalance (address: PublicAddress)
+                                                   (currency: Currency)
+                                                   : Option<decimal> =
+            let maybeCachedBalance =
+                self.RetrieveLastCompoundBalance address currency
 
             match maybeCachedBalance with
             | NotAvailable -> None
@@ -443,16 +533,21 @@ module Caching =
                 (fun _ ->
                     let newCachedValueWithNewBalance, previousBalance =
                         let newCurrencyBalances, previousBalance =
-                            match sessionCachedNetworkData.Balances.TryFind currency with
+                            match sessionCachedNetworkData.Balances.TryFind
+                                      currency with
                             | None -> Map.empty, None
                             | Some currencyBalances ->
-                                let maybePreviousBalance = currencyBalances.TryFind address
+                                let maybePreviousBalance =
+                                    currencyBalances.TryFind address
+
                                 currencyBalances, maybePreviousBalance
 
                         { sessionCachedNetworkData with
                             Balances =
                                 sessionCachedNetworkData.Balances.Add
-                                    (currency, newCurrencyBalances.Add (address, (newBalance, time)))
+                                    (currency,
+                                     newCurrencyBalances.Add
+                                         (address, (newBalance, time)))
                         },
                         previousBalance
 
@@ -461,36 +556,50 @@ module Caching =
                             FSharpUtil.option {
                                 let! previousCachedBalance, _ = previousBalance
 
-                                do! if newBalance <> previousCachedBalance && previousCachedBalance > newBalance then
+                                do! if newBalance <> previousCachedBalance
+                                       && previousCachedBalance > newBalance then
                                         Some ()
                                     else
                                         None
 
                                 let! currencyAddresses =
-                                    newCachedValueWithNewBalance.OutgoingTransactions.TryFind currency
+                                    newCachedValueWithNewBalance.OutgoingTransactions.TryFind
+                                        currency
 
-                                let! addressTransactions = currencyAddresses.TryFind address
+                                let! addressTransactions =
+                                    currencyAddresses.TryFind address
 
-                                let allCombinationsOfTransactions = MapCombinations addressTransactions
+                                let allCombinationsOfTransactions =
+                                    MapCombinations addressTransactions
 
                                 let newAddressTransactions =
                                     match List.tryFind
                                               (fun combination ->
                                                   let txSumAmount =
-                                                      List.sumBy (fun (_, (txAmount, _)) -> txAmount) combination
+                                                      List.sumBy
+                                                          (fun (_, (txAmount, _)) ->
+                                                              txAmount)
+                                                          combination
 
-                                                  previousCachedBalance - txSumAmount = newBalance)
+                                                  previousCachedBalance
+                                                  - txSumAmount = newBalance)
                                               allCombinationsOfTransactions with
                                     | None -> addressTransactions
-                                    | Some combination -> RemoveRangeFromMap addressTransactions combination
+                                    | Some combination ->
+                                        RemoveRangeFromMap
+                                            addressTransactions
+                                            combination
 
                                 let newOutgoingTransactions =
                                     newCachedValueWithNewBalance.OutgoingTransactions.Add
-                                        (currency, currencyAddresses.Add (address, newAddressTransactions))
+                                        (currency,
+                                         currencyAddresses.Add
+                                             (address, newAddressTransactions))
 
                                 return
                                     { newCachedValueWithNewBalance with
-                                        OutgoingTransactions = newOutgoingTransactions
+                                        OutgoingTransactions =
+                                            newOutgoingTransactions
                                     }
                             }
 
@@ -498,9 +607,11 @@ module Caching =
                         | None -> newCachedValueWithNewBalance
                         | Some x -> x
 
-                    sessionCachedNetworkData <- newCachedValueWithNewBalanceAndMaybeLessTransactions
+                    sessionCachedNetworkData <-
+                        newCachedValueWithNewBalanceAndMaybeLessTransactions
 
-                    SaveNetworkDataToDisk newCachedValueWithNewBalanceAndMaybeLessTransactions
+                    SaveNetworkDataToDisk
+                        newCachedValueWithNewBalanceAndMaybeLessTransactions
 
                     let allTransSum =
                         GetSumOfAllTransactions
@@ -533,18 +644,22 @@ module Caching =
                 cacheFiles.CachedNetworkData
                 (fun _ ->
                     let newCurrencyAddresses =
-                        match sessionCachedNetworkData.OutgoingTransactions.TryFind currency with
+                        match sessionCachedNetworkData.OutgoingTransactions.TryFind
+                                  currency with
                         | None -> Map.empty
                         | Some currencyAddresses -> currencyAddresses
 
                     let newAddressTransactions =
                         match newCurrencyAddresses.TryFind address with
                         | None -> Map.empty.Add (txId, (amount, time))
-                        | Some addressTransactions -> addressTransactions.Add (txId, (amount, time))
+                        | Some addressTransactions ->
+                            addressTransactions.Add (txId, (amount, time))
 
                     let newOutgoingTxs =
                         sessionCachedNetworkData.OutgoingTransactions.Add
-                            (currency, newCurrencyAddresses.Add (address, newAddressTransactions))
+                            (currency,
+                             newCurrencyAddresses.Add
+                                 (address, newAddressTransactions))
 
                     let newCachedValue =
                         { sessionCachedNetworkData with
@@ -569,20 +684,32 @@ module Caching =
                && (not Config.EthTokenEstimationCouldBeBuggyAsInNotAccurate) then
                 self.StoreTransactionRecord address feeCurrency txId feeAmount
 
-        member __.SaveServerLastStat (serverMatchFunc: ServerDetails -> bool) (stat: HistoryFact): unit =
+        member __.SaveServerLastStat (serverMatchFunc: ServerDetails -> bool)
+                                     (stat: HistoryFact)
+                                     : unit =
             lock
                 cacheFiles.ServerStats
                 (fun _ ->
-                    let currency, serverInfo, previousLastSuccessfulCommunication =
-                        match ServerRegistry.TryFindValue sessionServerRanking serverMatchFunc with
-                        | None -> failwith "Merge&Save didn't happen before launching the FaultTolerantPClient?"
+                    let (currency,
+                         serverInfo,
+                         previousLastSuccessfulCommunication) =
+                        match ServerRegistry.TryFindValue
+                                  sessionServerRanking
+                                  serverMatchFunc with
+                        | None ->
+                            failwith
+                                "Merge&Save didn't happen before launching the FaultTolerantPClient?"
                         | Some (currency, server) ->
                             match server.CommunicationHistory with
                             | None -> currency, server.ServerInfo, None
                             | Some (prevHistoryInfo, lastComm) ->
                                 match prevHistoryInfo.Status with
-                                | Success -> currency, server.ServerInfo, Some lastComm
-                                | Fault faultInfo -> currency, server.ServerInfo, faultInfo.LastSuccessfulCommunication
+                                | Success ->
+                                    currency, server.ServerInfo, Some lastComm
+                                | Fault faultInfo ->
+                                    currency,
+                                    server.ServerInfo,
+                                    faultInfo.LastSuccessfulCommunication
 
                     let now = DateTime.Now
 
@@ -601,7 +728,8 @@ module Caching =
                                      Fault
                                          {
                                              Exception = exInfo
-                                             LastSuccessfulCommunication = previousLastSuccessfulCommunication
+                                             LastSuccessfulCommunication =
+                                                 previousLastSuccessfulCommunication
                                          }
                              },
                              now)
@@ -617,9 +745,14 @@ module Caching =
                         | None -> Seq.empty
                         | Some servers -> servers
 
-                    let newServersForCurrency = Seq.append (seq { yield newServerDetails }) serversForCurrency
+                    let newServersForCurrency =
+                        Seq.append
+                            (seq { yield newServerDetails })
+                            serversForCurrency
 
-                    let newServerList = sessionServerRanking.Add (currency, newServersForCurrency)
+                    let newServerList =
+                        sessionServerRanking.Add
+                            (currency, newServersForCurrency)
 
                     let newCachedValue = SaveServerRankingsToDisk newServerList
                     sessionServerRanking <- newCachedValue)
@@ -631,11 +764,15 @@ module Caching =
                     match sessionServerRanking.TryFind currency with
                     | None ->
                         failwith
-                        <| SPrintF1 "Initialization of servers' cache failed? currency %A not found" currency
+                        <| SPrintF1
+                            "Initialization of servers' cache failed? currency %A not found"
+                            currency
                     | Some servers -> servers)
 
         member __.ExportServers (): Option<string> =
-            lock cacheFiles.ServerStats (fun _ -> LoadFromDiskInner cacheFiles.ServerStats)
+            lock
+                cacheFiles.ServerStats
+                (fun _ -> LoadFromDiskInner cacheFiles.ServerStats)
 
         member __.BootstrapServerStatsFromTrustedSource (): Async<unit> =
             let downloadFile url: Async<Option<string>> =
@@ -643,15 +780,22 @@ module Caching =
                     async {
                         use httpClient = new HttpClient()
                         let uri = Uri url
-                        let! response = Async.AwaitTask (httpClient.GetAsync uri)
+
+                        let! response =
+                            Async.AwaitTask (httpClient.GetAsync uri)
+
                         let isSuccess = response.IsSuccessStatusCode
 
-                        let! content = Async.AwaitTask <| response.Content.ReadAsStringAsync ()
+                        let! content =
+                            Async.AwaitTask
+                            <| response.Content.ReadAsStringAsync ()
 
                         if isSuccess then
                             return content
                         else
-                            Infrastructure.LogError ("WARNING: error trying to retrieve server stats: " + content)
+                            Infrastructure.LogError
+                                ("WARNING: error trying to retrieve server stats: "
+                                 + content)
 
                             return failwith content
                     }
@@ -671,17 +815,41 @@ module Caching =
             let projName = "geewallet"
 
             let ghBaseUrl, glBaseUrl, gnomeBaseUrl =
-                "https://raw.githubusercontent.com", "https://gitlab.com", "https://gitlab.gnome.org"
+                "https://raw.githubusercontent.com",
+                "https://gitlab.com",
+                "https://gitlab.gnome.org"
 
-            let pathToFile = SPrintF1 "src/GWallet.Backend/%s" ServerRegistry.ServersEmbeddedResourceFileName
+            let pathToFile =
+                SPrintF1
+                    "src/GWallet.Backend/%s"
+                    ServerRegistry.ServersEmbeddedResourceFileName
 
-            let gitHub = SPrintF5 "%s/%s/%s/%s/%s" ghBaseUrl orgName1 projName targetBranch pathToFile
+            let gitHub =
+                SPrintF5
+                    "%s/%s/%s/%s/%s"
+                    ghBaseUrl
+                    orgName1
+                    projName
+                    targetBranch
+                    pathToFile
 
             let gitLab =
-                SPrintF5 "%s/%s/%s/raw/%s/%s" glBaseUrl orgName1 projName targetBranch pathToFile
+                SPrintF5
+                    "%s/%s/%s/raw/%s/%s"
+                    glBaseUrl
+                    orgName1
+                    projName
+                    targetBranch
+                    pathToFile
 
             let gnomeGitLab =
-                SPrintF5 "%s/%s/%s/raw/%s/%s" gnomeBaseUrl orgName2 projName targetBranch pathToFile
+                SPrintF5
+                    "%s/%s/%s/raw/%s/%s"
+                    gnomeBaseUrl
+                    orgName2
+                    projName
+                    targetBranch
+                    pathToFile
 
             let allUrls = [ gitHub; gitLab; gnomeGitLab ]
             let allJobs = allUrls |> Seq.map downloadFile
@@ -694,12 +862,15 @@ module Caching =
                     Infrastructure.LogError
                         "WARNING: Couldn't reach a trusted server to retrieve server stats to bootstrap cache, running in offline mode?"
                 | Some lastServerStatsInJson ->
-                    let lastServerStats = ImportFromJson<ServerRanking> lastServerStatsInJson
+                    let lastServerStats =
+                        ImportFromJson<ServerRanking> lastServerStatsInJson
 
                     lock
                         cacheFiles.ServerStats
                         (fun _ ->
-                            let savedServerStats = SaveServerRankingsToDisk lastServerStats
+                            let savedServerStats =
+                                SaveServerRankingsToDisk lastServerStats
+
                             sessionServerRanking <- savedServerStats)
             }
 

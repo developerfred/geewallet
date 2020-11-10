@@ -45,12 +45,24 @@ type ServerChannelNegotiationException =
     new(message: string, innerException: Exception) =
         { inherit CommunicationUnsuccessfulException(message, innerException) }
 
-    new(message: string, webExStatusCode: WebExceptionStatus, innerException: Exception) =
-        { inherit CommunicationUnsuccessfulException(SPrintF2 "%s (WebErr: %s)" message (webExStatusCode.ToString ()),
+    new(message: string,
+        webExStatusCode: WebExceptionStatus,
+        innerException: Exception) =
+        { inherit CommunicationUnsuccessfulException(SPrintF2
+                                                         "%s (WebErr: %s)"
+                                                         message
+                                                         (webExStatusCode.ToString
+                                                             ()),
                                                      innerException) }
 
-    new(message: string, cloudFlareError: CloudFlareError, innerException: Exception) =
-        { inherit CommunicationUnsuccessfulException(SPrintF2 "%s (CfErr: %s)" message (cloudFlareError.ToString ()),
+    new(message: string,
+        cloudFlareError: CloudFlareError,
+        innerException: Exception) =
+        { inherit CommunicationUnsuccessfulException(SPrintF2
+                                                         "%s (CfErr: %s)"
+                                                         message
+                                                         (cloudFlareError.ToString
+                                                             ()),
                                                      innerException) }
 
 type ServerRestrictiveException =
@@ -63,5 +75,7 @@ type UnhandledWebException =
     inherit Exception
 
     new(status: WebExceptionStatus, innerException: Exception) =
-        { inherit Exception(SPrintF1 "Backend not prepared for this WebException with Status[%i]" (int status),
+        { inherit Exception(SPrintF1
+                                "Backend not prepared for this WebException with Status[%i]"
+                                (int status),
                             innerException) }

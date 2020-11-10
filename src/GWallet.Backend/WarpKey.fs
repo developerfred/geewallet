@@ -16,7 +16,6 @@ module WarpKey =
             raise (ArgumentException ())
         else
             let result = Array.create<byte> a.Length (byte 0)
-
             for i = 0 to (a.Length - 1) do
                 result.[i] <- ((a.[i]) ^^^ (b.[i]))
 
@@ -33,7 +32,13 @@ module WarpKey =
         saltByteList.Add (byte 1)
 
         NBitcoin.Crypto.SCrypt.ComputeDerivedKey
-            (passphraseByteList.ToArray (), saltByteList.ToArray (), 262144, 8, 1, Nullable<int> (), 32)
+            (passphraseByteList.ToArray (),
+             saltByteList.ToArray (),
+             262144,
+             8,
+             1,
+             Nullable<int> (),
+             32)
 
     let PBKDF2 (passphrase: string) (salt: string): array<byte> =
         // FIXME: stop using mutable collections
@@ -48,7 +53,8 @@ module WarpKey =
         use hashAlgo = new HMACSHA256(passphraseByteList.ToArray ())
 
         // TODO: remove nowarn when we switch to .NET BCL's impl instead of NBitcoin.Crypto
-        NBitcoin.Crypto.Pbkdf2.ComputeDerivedKey (hashAlgo, saltByteList.ToArray (), 65536, 32)
+        NBitcoin.Crypto.Pbkdf2.ComputeDerivedKey
+            (hashAlgo, saltByteList.ToArray (), 65536, 32)
 
     let private LENGTH_OF_PRIVATE_KEYS = 32
 
