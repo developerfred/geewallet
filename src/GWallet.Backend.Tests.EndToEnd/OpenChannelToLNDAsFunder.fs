@@ -14,14 +14,14 @@ type OpenChannelAsFunder() =
         do Config.SetRunModeTesting()
 
     [<Test>]
-    member __.``can open channel from LND``() =
+    member __.``can open channel to LND``() =
         async {
             use! walletInstance = WalletInstance.New None None
             use bitcoind = Bitcoind.Start()
             use _electrumServer = ElectrumServer.Start bitcoind
             use! lnd = Lnd.Start bitcoind
             
-            let! _channelId = ChannelManagement.OpenChannel walletInstance bitcoind lnd
+            let! _channelId = GwalletToGwalletChannelManagement.OpenChannel walletInstance bitcoind lnd
 
             return ()
         } |> Async.RunSynchronously

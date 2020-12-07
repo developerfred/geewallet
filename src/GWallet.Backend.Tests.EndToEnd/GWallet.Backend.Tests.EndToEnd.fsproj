@@ -58,7 +58,7 @@
     </Compile>
     <Compile Include="LN.fs" />
     <Compile Include="Config.fs" />
-    <Compile Include="ChannelManagement.fs" />
+    <Compile Include="GwalletToGwalletChannelManagement.fs" />
     <Compile Include="OpenChannelToLNDAsFunder.fs" />
     <Compile Include="OpenChannelToLNDAsFundee.fs" />
     <Compile Include="GeewalletToGeewalletFunder.fs" />

@@ -27,7 +27,7 @@ type CloseChannelAsFunder() =
 
         let! channelId = async {
             try 
-                let! channelId = ChannelManagement.OpenChannel walletInstance bitcoind lnd
+                let! channelId = GwalletToGwalletChannelManagement.OpenChannel walletInstance bitcoind lnd
                 return channelId
             with
             | _ex ->

@@ -27,7 +27,7 @@ type GeewalletToGeewalletFundee() =
             Lightning.Network.AcceptChannel
                 walletInstance.Node
 
-        let (channelId, _) = UnwrapResult pendingChannelRes "OpenChannel failed"
+        let (channelId, _fundingTxId) = UnwrapResult pendingChannelRes "OpenChannel failed"
 
         let! lockFundingRes = Lightning.Network.LockChannelFunding walletInstance.Node channelId
         UnwrapResult lockFundingRes "LockChannelFunding failed"
@@ -66,7 +66,7 @@ type GeewalletToGeewalletFundee() =
 
         let! closeChannelRes = Lightning.Network.AcceptCloseChannel walletInstance.Node channelId
         match closeChannelRes with
-        | Ok _ -> ()
+        | Ok () -> ()
         | Error err -> failwith (SPrintF1 "failed to accept close channel: %A" err)
 
         return ()

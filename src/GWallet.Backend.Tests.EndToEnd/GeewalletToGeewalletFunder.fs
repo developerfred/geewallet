@@ -188,7 +188,7 @@ type GeewalletToGeewalletFunder() =
 
         let! closingTxConfirmedRes = waitForClosingTxConfirmed 0
         match closingTxConfirmedRes with
-        | Ok _ -> ()
+        | Ok () -> ()
         | Error err -> failwith (SPrintF1 "error when waiting for closing tx to confirm: %s" err)
 
         return ()
