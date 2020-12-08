@@ -30,7 +30,7 @@ type CloseChannelAsFundee() =
 
         let! channelId, fundingOutPoint = async {
             try 
-                let! channelId, fundingOutPoint = GwalletToGwalletChannelManagement.AcceptChannel walletInstance bitcoind lnd
+                let! channelId, fundingOutPoint = GwalletToLndChannelManagement.AcceptChannel walletInstance bitcoind lnd
                 return channelId, fundingOutPoint
             with
             | _ex ->

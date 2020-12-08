@@ -14,7 +14,7 @@ open GWallet.Backend.FSharpUtil.UwpHacks
 
 
 
-module GwalletToGwalletChannelManagement =
+module GwalletToLndChannelManagement =
     let OpenChannel(walletInstance: WalletInstance) (bitcoind: Bitcoind) (lnd : Lnd): Async<ChannelIdentifier> =
         async {
             do! lnd.FundByMining bitcoind walletInstance
