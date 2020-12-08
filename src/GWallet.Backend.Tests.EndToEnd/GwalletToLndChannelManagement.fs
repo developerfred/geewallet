@@ -83,7 +83,7 @@ module GwalletToLndChannelManagement =
                 let! connectionResult = lnd.ConnectTo walletInstance.NodeEndPoint
                 match connectionResult with
                 | ConnectionResult.CouldNotConnect -> failwith "could not connect"
-                | _ -> ()
+                | _connectionResult -> ()
                 return!
                     lnd.OpenChannel
                         walletInstance.NodeEndPoint

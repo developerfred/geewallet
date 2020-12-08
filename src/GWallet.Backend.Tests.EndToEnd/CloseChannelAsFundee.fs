@@ -43,7 +43,7 @@ type CloseChannelAsFundee() =
             match connectionResult with
             | ConnectionResult.CouldNotConnect ->
                 failwith "lnd could not connect back to us"
-            | _ -> ()
+            | _connectionResult -> ()
             do! Async.Sleep 1000
             do! lnd.CloseChannel fundingOutPoint
             return ()
@@ -57,7 +57,7 @@ type CloseChannelAsFundee() =
                     return Error (SPrintF1 "Failed to receive shutdown msg from LND: %A" err)
                 | Ok event when event = IncomingChannelEvent.Shutdown ->
                     return Ok ()
-                | _ -> return! receiveEvent ()
+                | _event -> return! receiveEvent ()
             }
 
             let! receiveEventRes = receiveEvent()

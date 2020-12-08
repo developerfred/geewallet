@@ -162,7 +162,7 @@ type GeewalletToGeewalletFunder() =
 
         let! closeChannelRes = Lightning.Network.CloseChannel walletInstance.Node channelId
         match closeChannelRes with
-        | Ok _ -> ()
+        | Ok () -> ()
         | Error err -> failwith (SPrintF1 "error when closing channel: %s" err.Message)
 
         match (walletInstance.ChannelStore.ChannelInfo channelId).Status with
